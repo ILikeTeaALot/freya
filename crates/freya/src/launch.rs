@@ -183,7 +183,7 @@ pub fn launch_cfg<T: 'static + Clone + Send>(app: AppComponent, config: LaunchCo
     launch_cfg_event_loop(app, config, None)
 }
 
-pub fn launch_cfg_event_loop<T: 'static + Clone + Send>(app: AppComponent, config: LaunchConfig<T>, use_event_loop: Option<impl Fn(&EventLoop<EventMessage>)>) {
+pub fn launch_cfg_event_loop<T: 'static + Clone + Send>(app: AppComponent, config: LaunchConfig<T>, use_event_loop: Option<impl Fn(&EventLoop<EventMessage>) + 'static>) {
     use freya_core::prelude::{FreyaDOM, SafeDOM};
 
     let fdom = FreyaDOM::default();
