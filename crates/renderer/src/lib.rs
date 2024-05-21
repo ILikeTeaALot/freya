@@ -6,7 +6,7 @@ use freya_core::dom::SafeDOM;
 use freya_native_core::NodeId;
 use std::sync::{Arc, Mutex};
 use tokio::sync::Notify;
-use winit::event_loop::EventLoopBuilder;
+use winit::event_loop::{EventLoop, EventLoopBuilder};
 
 pub use config::WindowConfig;
 pub use window::WindowEnv;
@@ -33,6 +33,7 @@ impl DesktopRenderer {
         config: LaunchConfig<T>,
         mutations_notifier: Option<Arc<Notify>>,
         hovered_node: HoveredNode,
+        use_event_loop: Option<impl Fn(&EventLoop<EventMessage>) + 'static>,
     ) {
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -44,6 +45,9 @@ impl DesktopRenderer {
         let event_loop = EventLoopBuilder::<EventMessage>::with_user_event()
             .build()
             .expect("Failed to create event loop.");
+        if let Some(func) = use_event_loop {
+            func(&event_loop)
+        }
         let proxy = event_loop.create_proxy();
 
         // Hotreload support for Dioxus
