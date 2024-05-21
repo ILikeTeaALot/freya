@@ -180,10 +180,13 @@ pub fn launch_with_props(app: AppComponent, title: &'static str, (width, height)
 /// }
 /// ```
 pub fn launch_cfg<T: 'static + Clone + Send>(app: AppComponent, config: LaunchConfig<T>) {
-    launch_cfg_event_loop(app, config, |_|{})
+    launch_cfg_event_loop(app, config, None)
 }
 
-pub fn launch_cfg_event_loop<T: 'static + Clone + Send>(app: AppComponent, config: LaunchConfig<T>, use_event_loop: impl Fn(&EventLoop<EventMessage>) + 'static) {
+/// Launch a new window with a pre-existing Winit EventLoop.
+///
+/// It is critical that the event loop is created with `::with_user_event()`
+pub fn launch_cfg_event_loop<T: 'static + Clone + Send>(app: AppComponent, config: LaunchConfig<T>, user_event_loop: Option<EventLoop<EventMessage>>) {
     use freya_core::prelude::{FreyaDOM, SafeDOM};
 
     let fdom = FreyaDOM::default();
@@ -227,7 +230,7 @@ pub fn launch_cfg_event_loop<T: 'static + Clone + Send>(app: AppComponent, confi
             (vdom, None, None)
         }
     };
-    DesktopRenderer::launch(vdom, sdom, config, mutations_notifier, hovered_node, Some(use_event_loop));
+    DesktopRenderer::launch(vdom, sdom, config, mutations_notifier, hovered_node, user_event_loop);
 }
 
 #[cfg(any(not(feature = "devtools"), not(debug_assertions)))]

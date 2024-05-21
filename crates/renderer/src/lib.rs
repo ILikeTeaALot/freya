@@ -27,58 +27,55 @@ pub type HoveredNode = Option<Arc<Mutex<Option<NodeId>>>>;
 pub struct DesktopRenderer;
 
 impl DesktopRenderer {
-    pub fn launch<T: 'static + Clone>(
-        vdom: VirtualDom,
-        sdom: SafeDOM,
-        config: LaunchConfig<T>,
-        mutations_notifier: Option<Arc<Notify>>,
-        hovered_node: HoveredNode,
-        use_event_loop: Option<impl Fn(&EventLoop<EventMessage>) + 'static>,
-    ) {
-        let rt = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
+	pub fn launch<T: 'static + Clone>(
+		vdom: VirtualDom,
+		sdom: SafeDOM,
+		config: LaunchConfig<T>,
+		mutations_notifier: Option<Arc<Notify>>,
+		hovered_node: HoveredNode,
+		user_event_loop: Option<EventLoop<EventMessage>>,
+	) {
+		let rt = tokio::runtime::Builder::new_multi_thread()
+			.enable_all()
+			.build()
+			.unwrap();
 
-        let _guard = rt.enter();
+		let _guard = rt.enter();
 
-        let event_loop = EventLoopBuilder::<EventMessage>::with_user_event()
-            .build()
-            .expect("Failed to create event loop.");
-        if let Some(func) = use_event_loop {
-            func(&event_loop)
-        }
-        let proxy = event_loop.create_proxy();
+		let event_loop = user_event_loop.unwrap_or_else(|| EventLoopBuilder::<EventMessage>::with_user_event()
+			.build()
+			.expect("Failed to create event loop."));
+		let proxy = event_loop.create_proxy();
 
-        // Hotreload support for Dioxus
-        #[cfg(feature = "hot-reload")]
-        {
-            use std::process::exit;
-            let proxy = proxy.clone();
-            dioxus_hot_reload::connect(move |msg| match msg {
-                dioxus_hot_reload::HotReloadMsg::UpdateTemplate(template) => {
-                    let _ = proxy.send_event(EventMessage::UpdateTemplate(template));
-                }
-                dioxus_hot_reload::HotReloadMsg::Shutdown => exit(0),
-                dioxus_hot_reload::HotReloadMsg::UpdateAsset(_) => {}
-            });
-        }
+		// Hotreload support for Dioxus
+		#[cfg(feature = "hot-reload")]
+		{
+			use std::process::exit;
+			let proxy = proxy.clone();
+			dioxus_hot_reload::connect(move |msg| match msg {
+				dioxus_hot_reload::HotReloadMsg::UpdateTemplate(template) => {
+					let _ = proxy.send_event(EventMessage::UpdateTemplate(template));
+				}
+				dioxus_hot_reload::HotReloadMsg::Shutdown => exit(0),
+				dioxus_hot_reload::HotReloadMsg::UpdateAsset(_) => {}
+			});
+		}
 
-        let window_env = WindowEnv::new(config.window, &event_loop);
+		let window_env = WindowEnv::new(config.window, &event_loop);
 
-        let mut app = App::new(
-            sdom,
-            vdom,
-            &proxy,
-            mutations_notifier,
-            window_env,
-            config.embedded_fonts,
-            config.plugins,
-            config.default_fonts,
-        );
+		let mut app = App::new(
+			sdom,
+			vdom,
+			&proxy,
+			mutations_notifier,
+			window_env,
+			config.embedded_fonts,
+			config.plugins,
+			config.default_fonts,
+		);
 
-        app.init_doms();
-        app.process_layout();
-        app.run(event_loop, proxy, hovered_node)
-    }
+		app.init_doms();
+		app.process_layout();
+		app.run(event_loop, proxy, hovered_node)
+	}
 }
